@@ -24,7 +24,7 @@ For example, once we've defined a connection, rather than having to type:
 
     ssh a.username@gw-1.remote.example-server.net -A -p 20222
 
-With a connection shortcut, the above is as simple as:
+...the above is as simple as:
 
     go work
 
@@ -36,11 +36,35 @@ A shell script is responsible for invoking PHP, and then SSH for connecting.
 Once the connection is established, the only remaining process from calling `go`
 is SSH.  Both PHP and the shell script terminate before connecting.
 
+## Downloading:
+
+To use GoSSH, you first need to download it to your computer (duh?).  Consider
+downloading to a semi-permanent location like `/opt/gossh-php` or `$HOME/gossh-php`.
+
+### Using Git:
+
+    cd /opt
+    git clone https://github.com/dapphp/gossh-php.git
+
+Proceed to Installation.
+
+### Manual Download:
+
+* Download the latest version from [here](https://github.com/dapphp/gossh-php/archive/master.zip).
+* Extract the contents of the package to the desired location.
+* Proceed to Installation.
+
+### Using Composer:
+
+Composer is not yet supported :(
+
 ## Installation:
 
-***INSTRUCTIONS HERE FOR DOWNLOADING AND INSTALLING***
+For making connections efficiently, the "launcher" program is a bash script that
+invokes PHP to build SSH connection strings based on your configuration.  The
+launcher is what should be executed to make connections.
 
-If the program isn't installed to your default path, it's recommended to set up
+If gossh-php isn't installed to your default path, it's recommended to set up
 a symlink, or alias.
 
 One possibility is:
@@ -55,12 +79,29 @@ file to define the command and alias:
 
 `alias go=/opt/gossh-php/go`
 
+Copy the `.gohosts.cfg.php.SAMPLE` file to your $HOME and rename it to
+`.gohosts.cfc.php`.
 
-## Host Configuration:
+Now, you can use `go` from anywhere to execute the program and make connections.
+
+## Defining shortcuts from the command line:
+
+Rather than modifying your config file by hand, it is possible to add a host
+entry using a command:
+
+    go --add --name myhost -u a.user -p 2222 my.ssh-server.org
+
+The above command will `--add` a connection for `my.ssh-server.org`
+with a `--name` of `myhost` that connects to `-p`ort 2222.
+
+Be aware that when adding hosts this way, formatting or comments in the return
+array will be lost.  Other comments and formatting are preserved.
+
+## Advanced Host Configuration:
 
 The purpose of this program is to give you a quick way to connect to commonly
 used SSH hosts.  While not required, host information is kept in a config file
-that use PHP syntax to define connections.
+that uses PHP syntax to define connections.
 
 The default name of the configuration file is `.gohosts.cfg.php`.
 
