@@ -66,15 +66,22 @@ if (is_array($config)) {
     $identities = (isset($config['identities']) && is_array($config['identities'])) ? $config['identities'] : array();
 }
 
-if (sizeof($newopts) != 1) {
+if (sizeof($newopts) > 1) {
     echo "Too many remaining arguments, couldn't determine host\n";
 
+    echo usage();
+    exit(1);
+} elseif (sizeof($newopts) == 0) {
     echo usage();
     exit(1);
 }
 
 $host = $newopts[0];
 $user = $port = $verbose = null;
+
+if (strpos($host, '@') !== false) {
+    list($user, $host) = explode('@', $host, 2);
+}
 
 if (isset($options['u'])) {
     $user = $options['u'];
