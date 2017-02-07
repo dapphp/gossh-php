@@ -1,0 +1,16 @@
+{
+    "name": "dapphp/gossh-php",
+    "description": "An SSH connection manager written in PHP",
+    "keywords": [ "ssh", "go", "connection manager", "devops" ],
+    "type": "project",
+    "require": {
+        "php": "~5.2"
+    },
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Drew Phillips",
+            "email": "drew@drew-phillips.com"
+        }
+    ]
+}
