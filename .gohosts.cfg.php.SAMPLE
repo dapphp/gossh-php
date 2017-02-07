@@ -1,0 +1,33 @@
+<?php
+
+/*****************************************************************************\
+|                          go.php configuration file                          |
+|              See https://github.com/dapphp/gossh-php for more info          |
+|                                                                             |
+| This PHP file is used to define connection information for quick acecss to  |
+| remote hosts over ssh.  This file should return an array with at least one  |
+| index (hosts) that is an array of connection details (see example).  The    |
+| array format for the hosts is:                                              |
+|   $hosts['host'] = array(                                                   |
+|       'shortcut_name' => array(                                             |
+|           0 => 'username', 1 => 'hostname', 2 => 'port', 3 => 'forward'     |
+|       ),                                                                    |
+|   );                                                                        |
+\*****************************************************************************/
+
+$identity_path = getenv('HOME') . '/.ssh/';
+
+return [
+    'hosts' =>
+    [
+     /* 'name'            => [ 'user',          'hostname',                'port', 'forward' ], */
+        'bk'              => [ 'signup',        'ssh.blinkenshell.org',    '2222',   0 ], // http://blinkenshell.org/wiki/Info/Login
+        'ussh'            => [ 'newx',          'unixssh.com',               '44',   0 ], // http://unixssh.com/index.php/free-shell-accounts
+        'opens'           => [ 'username',      'shell.openshells.net',     '443',   0 ], // http://www.openshells.net/shell-server
+        'sonic'           => [ 'g6',            'shell.sonic.net',           null,   1 ], // http://www.sonic.com
+    ],
+    'identities' => [ 
+        'work'          => "{$identity_path}work-id_rsa",
+    ],
+];
+
