@@ -147,6 +147,7 @@ Usage: {$script} [OPTIONS] HOST
 Quick SSH connection to HOST.
 Example: {$script} -u prog host.example.org
          {$script} hostname
+         {$script} --add --name example -u myuser -A -p 2222 hostname.example.org
 
 Options:
 
@@ -154,6 +155,8 @@ Options:
     -u, --user        User to connect as
     -p, --port        Port to connect to
     -v,               Enable verbose SSH output
+        --add         Flag to add a new host
+        --name name   Save the connection as 'name'
 
 Hosts:
 
@@ -184,6 +187,7 @@ USE;
 Report bugs to : drew@drew-phillips.com
 Homepage       : https://drew-phillips.com
 Download       : https://github.com/dapphp/gossh-php
+
 BANNER;
 
 }
@@ -305,7 +309,7 @@ function addHostToConfigFile($name, $entry)
 
     $content = substr($content, 0, $pos);
 
-    $fp = fopen($cfg . '.test', 'w+');
+    $fp = fopen($cfg, 'w+');
 
     if (!$fp) {
         echo "Failed to open '$cfg' for writing\n";
