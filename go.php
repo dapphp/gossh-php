@@ -45,7 +45,7 @@ if (php_sapi_name() != 'cli') {
 }
 
 // command line option parsing
-$shortopts = 'Avp:u:';
+$shortopts = 'Aavp:u:';
 $longopts  = [ 'user:', 'port:', 'add', 'name:' ];
 
 // parse parameters
@@ -111,6 +111,9 @@ if (isset($options['v']))
 if (isset($options['A']))
     $fwd = true;
 
+if (isset($options['a']))
+    $fwd = false;
+
 if (isset($options['add'])) {
     // add host
     if (!isset($options['name'])) {
@@ -159,6 +162,7 @@ Example: {$script} -u prog host.example.org
 Options:
 
     -A                Enables forwarding of the authentication agent connection
+    -a                Disables forwarding of the authentication agent connection
     -u, --user        User to connect as
     -p, --port        Port to connect to
     -v,               Enable verbose SSH output
