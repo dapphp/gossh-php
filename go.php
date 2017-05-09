@@ -5,7 +5,7 @@
  * GoSSH PHP.  An SSH connection manager written in PHP.
  *
  * @author  Drew Phillips <drew@drew-phillips.com>
- * @version 1.0.0
+ * @version 1.0.1
  * @license BSD-3-Clause
  * @link https://github.com/dapphp/gossh-php
  *
@@ -35,7 +35,6 @@
  */
 
 
-
 /** @var string The name of the config file used to store host entries */
 define('CONFIG_FILE_NAME', '.gohosts.cfg.php');
 
@@ -45,8 +44,23 @@ if (php_sapi_name() != 'cli') {
 }
 
 // command line option parsing
-$shortopts = 'Aavp:u:';
-$longopts  = [ 'user:', 'port:', 'add', 'name:' ];
+$shortopts = 'A' .  // forward ssh key
+             'a' .  // do not forward ssh key
+             'v' .  // verbose
+             'p:' . // --port port
+             'u:' . // --user user
+             'c'  . // --scp
+             'r'    // -r recursive (scp mode)
+;
+
+// long command line option names
+$longopts  = [
+    'user:',  // -u user
+    'port:',  // -p port
+    'add',    // --add new host entry
+    'name:',  // --name of host entry to add
+    'scp',    // -c scp instead of ssh
+];
 
 // parse parameters
 $options = getopt($shortopts, $longopts);
@@ -55,48 +69,86 @@ $options = getopt($shortopts, $longopts);
 $newopts = getopt_remaining($options);
 
 // testing, uncomment to debug parsed options
-//var_dump($options, $newopts);
+//var_dump($options, $newopts);exit;
 
+// read hosts - used by usage() and main
 $config     = getHostsFromConfig();
+
+// set defaults
 $hosts      = array();
 $identities = array();
+$user       = null;
+$port       = null;
+$verbose    = null;
+$recursive  = null;
+$scp        = null;
 
 if (is_array($config)) {
+    // config is an array, check for config keys
     $hosts      = (isset($config['hosts']) && is_array($config['hosts'])) ? $config['hosts'] : array();
     $identities = (isset($config['identities']) && is_array($config['identities'])) ? $config['identities'] : array();
 }
 
-if (sizeof($newopts) > 1) {
-    echo "Too many remaining arguments, couldn't determine host\n";
+if (sizeof($newopts) == 0) {
+    // no parameters passed on command line
+    echo usage();
 
-    echo usage();
-    exit(1);
-} elseif (sizeof($newopts) == 0) {
-    echo usage();
     exit(1);
 }
 
-$host = $newopts[0];
-$user = $port = $verbose = null;
+if (isset($options['scp']) || isset($options['c'])) {
+    // scp mode
+    $scp = true;
 
-if (strpos($host, '@') !== false) {
-    list($user, $host) = explode('@', $host, 2);
+    // recursive set?
+    if (isset($options['r'])) {
+        $recursive = true;
+    }
+
+    // need at least 2 arguments, source and destination file/pathspec
+    if (sizeof($newopts) < 2) {
+        echo "Not enough remaining arguments for scp source and destination path\n\n";
+
+        echo usage();
+        exit(1);
+    }
+} else {
+    // ssh mode
+
+    if (sizeof($newopts) > 1) {
+        // should only have host shortcut or hostname remaning
+        echo "Too many remaining arguments, couldn't determine host\n\n";
+
+        echo usage();
+        exit(1);
+    }
+
+    $host = $newopts[0];
+
+    if (strpos($host, '@') !== false) {
+        list($user, $host) = explode('@', $host, 2);
+    }
 }
 
+// set options from command line arguments
+
+// user argument
 if (isset($options['u'])) {
     $user = $options['u'];
 } elseif (isset($options['user'])) {
     $user = $options['user'];
 }
 
+// port argument
 if (isset($options['p'])) {
     $port = $options['p'];
 } elseif (isset($options['port'])) {
     $port = $options['port'];
 }
 
-if (isset($hosts[$host])) {
-    $h = $hosts[$host];
+// does host match a shortcut?
+if (!$scp && isset($hosts[$host])) {
+    $h    = $hosts[$host];
     $user = ($user) ?: $h[0];
     $host = $h[1];
     $port = ($port) ?: $h[2];
@@ -105,19 +157,26 @@ if (isset($hosts[$host])) {
     $fwd = false;
 }
 
-if (isset($options['v']))
+
+// verbose
+if (isset($options['v'])) {
     $verbose = true;
+}
 
-if (isset($options['A']))
+// forward
+if (isset($options['A'])) {
     $fwd = true;
+}
 
+// don't forward
 if (isset($options['a']))
     $fwd = false;
 
+// add host option
 if (isset($options['add'])) {
     // add host
     if (!isset($options['name'])) {
-        echo "'--name' must be supplied when calling --add\n";
+        echo "'--name' must be supplied when calling --add\n\n";
         echo usage();
         exit(1);
     }
@@ -131,21 +190,71 @@ if (isset($options['add'])) {
     exit(2);
 }
 
-$cmd = 'ssh %s%s %s';
-$cmd = sprintf($cmd,
-               (!$user ? '' : "{$user}@"),
-               $host,
-               (!$port ? '' : "-p {$port}")
-);
+if ($scp) {
+    // build scp command
+    $cmd   = array();
+    $cmd[] = 'scp';
 
-if ($verbose) $cmd .= ' -v';
-if ($fwd)     $cmd .= ' -A';
+    if ($recursive) {
+        $cmd[] = '-r';
+    }
 
+    if ($port) {
+        $cmd[] = "-P {$port}";
+    }
+
+    if ($verbose) {
+        $cmd[] = "-v";
+    }
+
+    // Anything remaining are file or additional arguments to pass to scp.
+    // If the last two entries aren't a source and destination, scp will likely
+    // fail with an error
+
+    // If the second to last argument is a local glob like /path/* ; then this
+    // will be expanded into respective files here so everything except the last
+    // option are local files and the last is the remote path
+
+    // one or more source files, or expanded glob
+    for ($i = 0 ; $i < sizeof($newopts) - 1; ++$i) {
+        if ($i == 0) {
+            $cmd[] = expandHostEntry($newopts[$i], $hosts);
+        } else {
+            $cmd[] = $newopts[$i];
+        }
+    }
+
+    // last argument is the destination
+    $dst   = $newopts[sizeof($newopts) - 1];
+    $cmd[] = expandHostEntry($dst, $hosts);
+
+    // implode all arguments into command string
+    $cmd = implode(' ', $cmd);
+
+} else {
+    // build ssh command
+    $cmd = 'ssh %s%s %s'; // user?host port?
+    $cmd = sprintf($cmd,
+        (!$user ? '' : "{$user}@"),
+        $host,
+        (!$port ? '' : "-p {$port}")
+        );
+
+    if ($verbose) $cmd .= ' -v';
+    if ($fwd)     $cmd .= ' -A';
+}
+
+// echo final ssh or scp command
+// this gets parsed by the bash script and exec'ed
 echo $cmd . "\n";
-exit(0);
-//passthru($cmd);
 
+exit(0); // return success
 
+/**
+ * Output a formatted help message
+ *
+ * @return void
+ */
 function usage()
 {
     global $argv, $hosts;
@@ -158,6 +267,9 @@ Quick SSH connection to HOST.
 Example: {$script} -u prog host.example.org
          {$script} hostname
          {$script} --add --name example -u myuser -A -p 2222 hostname.example.org
+SCP:     {$script} --scp [-r] [-v] [-u=user] [-p=port]
+                [[user@]host1:]file1 ... [[user@]host2:]file2
+         {$script} --scp -r /tmp/* host:/tmp/.
 
 Options:
 
@@ -169,7 +281,13 @@ Options:
         --add         Flag to add a new host
         --name name   Save the connection as 'name'
 
+SCP Options:
+
+    -c, --scp         scp instead of SSH
+    -r                Recursivly copy entire directory entries
+
 Hosts:
+
 
 USE;
 
@@ -203,6 +321,12 @@ BANNER;
 
 }
 
+/**
+ * Reparse the command line arguments for options not handled by getopt
+ *
+ * @param array $options The parsed options
+ * @return array Unparsed values from $argv
+ */
 function getopt_remaining($options)
 {
     global $argc, $argv;
@@ -235,6 +359,11 @@ function getopt_remaining($options)
     return $newargv;
 }
 
+/**
+ * Find the best usable config file
+ *
+ * @return string  Path to config file
+ */
 function findConfigFile()
 {
     $home = realpath(getenv('HOME'));
@@ -252,6 +381,12 @@ function findConfigFile()
     return $cfg;
 }
 
+/**
+ * Read and parse config file into array
+ *
+ * @return array The config
+ *
+ */
 function getHostsFromConfig()
 {
     $config = null;
@@ -280,6 +415,13 @@ function getHostsFromConfig()
     return $config;
 }
 
+/**
+ * Update config file with a new host entry
+ *
+ * @param string $name The shortcut name
+ * @param array $entry The host entry
+ * @return boolean true on success, false on failure
+ */
 function addHostToConfigFile($name, $entry)
 {
     $cfg = findConfigFile();
@@ -370,3 +512,49 @@ function addHostToConfigFile($name, $entry)
     return true;
 }
 
+/**
+ * Parse a host entry from an SCP file parameter like entry:/path
+ *
+ * @param string $entry  The local or remote scp path
+ * @param array  $hosts  The hosts
+ */
+function expandHostEntry($entry, $hosts)
+{
+    $hostent  = null;
+    $hostname = null;
+    $username = null;
+
+    if (strpos($entry, ':') !== false) {
+        list($hostent, $entry) = explode(':', $entry, 2);
+
+        if (strpos($hostent, '@') !== false) {
+            list($username, $hostent) = explode('@', $hostent, 2);
+        }
+    }
+
+    if ($hostent) {
+        if (isset($hosts[$hostent])) {
+            $hostname = $hosts[$hostent][1];
+
+            if (!$username) {
+                $username = $hosts[$hostent][0];
+            }
+        } else {
+            $hostname = $hostent;
+        }
+    }
+
+    $expanded = '';
+
+    if ($username) {
+        $expanded .= "{$username}@";
+    }
+
+    if ($hostname) {
+        $expanded .= "{$hostname}:";
+    }
+
+    $expanded .= $entry;
+
+    return $expanded;
+}

@@ -21,8 +21,9 @@ cmd=$cwd"/go.php $@"
 
 # execute php script and get output
 res=$($cmd)
+ret=$?
 
-if [ $? -eq 0 ] ; then
+if [ $ret -eq 0 ] ; then
     # successful, exec the output of php
     echo "$res"
     exec $res
@@ -31,5 +32,5 @@ else
     # php returned non zero, error or show usage
     echo "$res"
     echo
-    exit 1
+    exit $ret
 fi
