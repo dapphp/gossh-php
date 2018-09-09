@@ -1,10 +1,10 @@
 ## Name:
 
-**GoSSH-php** - An SSH connection manager written in PHP
+**GoSSH-php** - An SSH/scp connection manager written in PHP
 
 ### Version:
 
-**1.0.0**
+**1.0.2**
 
 ### Author:
 
@@ -18,15 +18,21 @@ Drew Phillips <drew@drew-phillips.com>
 
 GoSSH-php is an SSH connection manager written in PHP.  It's purpose is to let
 you easily define SSH connection shortcuts in a PHP config file so you can
-connect to frequently used servers with minimal typing.
+connect to frequently used servers with minimal typing.  You can also use it to
+scp files more quickly with servers you use frequently.
 
 For example, once we've defined a connection, rather than having to type:
 
-    ssh a.username@gw-1.remote.example-server.net -A -p 20222
+    ssh a.username@gw-1.remote.example-server.net -i ~/.ssh/example_identity -p 2222
 
 ...the above is as simple as:
 
-    go work
+    go example1
+
+You can also copy files (-c/--scp) using SCP mode:
+
+    go -c home-server:~/Desktop/notes.txt /tmp/.
+    # runs scp -P 2222 username@home-server.myip.addr:~/Desktop/notes.txt /tmp/notes.txt
 
 As many connections as needed can be defined and managed from a single config,
 each with their own parameters and options.
@@ -38,7 +44,7 @@ is SSH.  Both PHP and the shell script terminate before connecting.
 
 ## Downloading:
 
-To use GoSSH, you first need to download it to your computer (duh?).  Consider
+To use GoSSH, you first need to download it to your computer.  Consider
 downloading to a semi-permanent location like `/opt/gossh-php` or `$HOME/gossh-php`.
 
 ### Using Git:
@@ -127,7 +133,10 @@ key is the name of the shortcut used when connecting, and the connection itself
 is an array where the first entry defines the username for connecting, the
 second is the hostname to connect to, following by the port (or `null` for 22),
 and then a true/false value to define whether or not to forward the
-authentication agent connection (equivalent to `ssh -A`).
+authentication agent connection (equivalent to `ssh -A`).  An optional 5th
+parameter allows you to override the SSH identity (private key) to use when
+connecting.  The identity is also a shortcut which is defined in the config
+so the full path to the private key doesn't need to be typed out.
 
 In the above example, we could type `go work` from the command line to execute:
 `ssh -A root@ssh.myworkplace.org`.  The SSH authentication information is
@@ -153,6 +162,66 @@ For example, if we have defined a connection called `work`, with the username
 
 Type `go` to see advanced usage and list connections.
 
+### SCP Mode:
+
+It's also possible to use your host shortcuts for `scp` commands.
+
+SCP mode is invoked by passing the `--scp` or `-c` option to `go`.
+
+The host options for specifying local and remote files to copy is just like
+`scp` and globbing also works as expected.
+
+To copy all PHP files from the current directory to the server "home", invoke: 
+
+    go -c *.php home:/var/www/html/.
+
+This would be equivalent to using the scp command:
+
+    scp -P 12345 *.php username@home-server:/var/www/html/.
+
+
+### Listing all configured hosts:
+
+To remind yourself what hosts are defined with what options, simply run the
+program without any arguments:
+
+    go
+
+This will print the help screen with a list of all hosts sorted alphabetically:
+
+    Usage: go.php [OPTIONS] HOST
+    Quick SSH connection to HOST.
+    Example: go.php -u prog host.example.org
+             go.php hostname
+             go.php --add --name example -u myuser -A -p 2222 hostname.example.org
+    SCP:     go.php --scp [-r] [-v] [-u=user] [-p=port]
+                    [[user@]host1:]file1 ... [[user@]host2:]file2
+             go.php --scp -r /tmp/* host:/tmp/.
+    
+    Options:
+    
+        -A                Enables forwarding of the authentication agent connection
+        -a                Disables forwarding of the authentication agent connection
+        -u, --user        User to connect as
+        -p, --port        Port to connect to
+        -v,               Enable verbose SSH output
+            --add         Flag to add a new host
+            --name name   Save the connection as 'name'
+    
+    SCP Options:
+    
+        -c, --scp         scp instead of SSH
+        -r                Recursivly copy entire directory entries
+    
+    Hosts:
+    
+         bk => signup@ssh.blinkenshell.org:2222
+      opens => username@shell.openshells.net:443
+      sonic => g6@shell.sonic.net (forward agent)
+       ussh => newx@unixssh.com:44
+       work => your.name@gw142.int.youroffice.org (forward agent) (identity=work)
+
+
 ## TODO:
 
 * Support for passing additional/unrecognized arguments directly through to the
@@ -160,7 +229,7 @@ SSH command.
 
 ## Copyright:
 
-    Copyright (c) 2017 Drew Phillips
+    Copyright (c) 2018 Drew Phillips
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
