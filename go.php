@@ -49,6 +49,7 @@ $shortopts = 'A' .  // forward ssh key
              'v' .  // verbose
              'p:' . // --port port
              'u:' . // --user user
+             'i:' . // identity (private key) file to use for connection
              'c'  . // --scp
              'r'    // -r recursive (scp mode)
 ;
@@ -80,6 +81,7 @@ $identities = array();
 $user       = null;
 $port       = null;
 $verbose    = null;
+$identity   = null;
 $recursive  = null;
 $scp        = null;
 
@@ -153,10 +155,10 @@ if (!$scp && isset($hosts[$host])) {
     $host = $h[1];
     $port = ($port) ?: $h[2];
     $fwd  = (isset($h[3]) && true == $h[3]) ? true : false;
+    $identity = (isset($h[4]) && !(empty($h[4])) ? $h[4] : null);
 } else {
     $fwd = false;
 }
-
 
 // verbose
 if (isset($options['v'])) {
@@ -169,8 +171,14 @@ if (isset($options['A'])) {
 }
 
 // don't forward
-if (isset($options['a']))
+if (isset($options['a'])) {
     $fwd = false;
+}
+
+// identity
+if (isset($options['i'])) {
+    $identity = $options['i'];
+}
 
 // add host option
 if (isset($options['add'])) {
@@ -242,6 +250,15 @@ if ($scp) {
 
     if ($verbose) $cmd .= ' -v';
     if ($fwd)     $cmd .= ' -A';
+
+    if ($identity) {
+        if (isset($identities[$identity])) {
+            // identity matches a defined identity shortcut
+            $identity = $identities[$identity];
+        }
+
+        $cmd .= " -i {$identity}";
+    }
 }
 
 // echo final ssh or scp command
@@ -545,6 +562,11 @@ function expandHostEntry($entry, $hosts)
     }
 
     $expanded = '';
+
+    if ($hosts[$hostent][2]) {
+        // port
+        $expanded .= sprintf('-P %s ', $hosts[$hostent][2]);
+    }
 
     if ($username) {
         $expanded .= "{$username}@";

@@ -10,7 +10,8 @@
 | array format for the hosts is:                                              |
 |   $hosts['host'] = array(                                                   |
 |       'shortcut_name' => array(                                             |
-|           0 => 'username', 1 => 'hostname', 2 => 'port', 3 => 'forward'     |
+|           0 => 'username', 1 => 'hostname', 2 => 'port', 3 => 'forward',    |
+|           4 => 'identity',                                                  |
 |       ),                                                                    |
 |   );                                                                        |
 \*****************************************************************************/
@@ -20,11 +21,17 @@ $identity_path = getenv('HOME') . '/.ssh/';
 return [
     'hosts' =>
     [
-     /* 'name'            => [ 'user',          'hostname',                'port', 'forward' ], */
+     /* 'name'            => [ 'user',          'hostname',                'port', 'forward', 'identity',  ], */
         'bk'              => [ 'signup',        'ssh.blinkenshell.org',    '2222',   0 ], // http://blinkenshell.org/wiki/Info/Login
         'ussh'            => [ 'newx',          'unixssh.com',               '44',   0 ], // http://unixssh.com/index.php/free-shell-accounts
         'opens'           => [ 'username',      'shell.openshells.net',     '443',   0 ], // http://www.openshells.net/shell-server
         'sonic'           => [ 'g6',            'shell.sonic.net',           null,   1 ], // http://www.sonic.com
+
+
+        // The work example below will use the SSH private key from $identities called "work".
+        // The identity will expand to the full path to the identity file.
+        // When no identity is specified, the default for ssh is used.
+        'work'            => [ 'your.name',     'gw142.int.youroffice.org',  null,   1, 'work' ], // example
     ],
     'identities' => [ 
         'work'          => "{$identity_path}work-id_rsa",
