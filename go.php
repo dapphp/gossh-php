@@ -320,7 +320,17 @@ USE;
         }
 
         foreach ($hosts as $name => $host) {
-            echo sprintf("  %{$len}s => %s@%s%s\n", $name, $host[0], $host[1], ($host[2]) ? ":{$host[2]}" : '');
+            echo sprintf("  %{$len}s => %s@%s%s", $name, $host[0], $host[1], ($host[2]) ? ":{$host[2]}" : '');
+
+            if ($host[3]) {
+                echo " (forward agent)";
+            }
+
+            if (!empty($host[4])) {
+                echo " (identity={$host[4]})";
+            }
+
+            echo "\n";
         }
     } else {
         echo "\n"
